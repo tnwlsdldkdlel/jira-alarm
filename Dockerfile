@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including devDependencies for Vite)
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -28,7 +28,7 @@ RUN npm ci --only=production
 COPY server/ ./
 
 # Copy built React app
-COPY --from=build /app/build ./build
+COPY --from=build /app/dist ./build
 
 # Expose port 2001
 EXPOSE 2001

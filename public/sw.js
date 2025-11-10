@@ -1,9 +1,11 @@
 // Service Worker for Web Push Notifications
-const CACHE_NAME = 'jira-alarm-v1';
+const CACHE_NAME = 'jira-alarm-v2';
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css'
+  '/index.html',
+  '/manifest.json',
+  '/favicon.ico',
+  '/logo192.png'
 ];
 
 // Install event

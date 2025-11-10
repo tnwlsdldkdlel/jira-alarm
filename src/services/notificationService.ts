@@ -71,8 +71,8 @@ export class NotificationService {
       const subscription = await this.registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(
-          process.env.REACT_APP_VAPID_PUBLIC_KEY || 'BChsZnsKWxXHTuNZAmUlzuBvGvZsXEkb4-c92yJJBtOXDCiU0Q9-lZaHcFEt3Vc9eRNBsMlw67JJ3bO7nRC6ab4'
-        )
+          import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BChsZnsKWxXHTuNZAmUlzuBvGvZsXEkb4-c92yJJBtOXDCiU0Q9-lZaHcFEt3Vc9eRNBsMlw67JJ3bO7nRC6ab4'
+        ) as BufferSource
       });
 
       this.subscription = subscription;

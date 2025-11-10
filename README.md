@@ -80,11 +80,12 @@ jira-alarm/
 
 ## 🔧 기술 스택
 
-- **Frontend**: React 19, TypeScript, CSS3
-- **Backend**: Node.js, Express.js
+- **Frontend**: React 19, TypeScript, Vite, CSS3
+- **Backend**: Node.js, Express.js, Vercel Serverless Functions
 - **API**: Jira REST API v3
 - **Container**: Docker, Docker Compose
 - **Development**: Hot Reload, nodemon
+- **Deployment**: Vercel
 
 ## 📝 사용법
 
@@ -109,3 +110,56 @@ jira-alarm/
 - `npm run dev` 명령어로 실행했는지 확인
 - 파일 저장 후 잠시 기다려보기
 - 브라우저 캐시 삭제 후 새로고침
+
+## 🚀 Vercel 배포
+
+### 1. Vercel CLI 설치 및 로그인
+
+```bash
+npm i -g vercel
+vercel login
+```
+
+### 2. 프로젝트 배포
+
+```bash
+# 프로젝트 루트에서 실행
+vercel
+```
+
+### 3. 프로덕션 배포
+
+```bash
+vercel --prod
+```
+
+### 4. 환경 변수 설정
+
+Vercel 대시보드에서 다음 환경 변수를 설정하세요:
+
+- `VAPID_PUBLIC_KEY`: Web Push VAPID 공개 키
+- `VAPID_PRIVATE_KEY`: Web Push VAPID 개인 키
+- `VAPID_EMAIL`: VAPID 이메일 (예: `mailto:admin@example.com`)
+
+### 5. GitHub 연동 (선택사항)
+
+1. Vercel 대시보드에서 프로젝트 선택
+2. Settings → Git → Connect Git Repository
+3. GitHub 저장소 연결
+4. 자동 배포 활성화
+
+### 배포 구조
+
+- **프론트엔드**: Vite로 빌드된 정적 파일 (`dist/`)
+- **백엔드**: Vercel Serverless Functions (`api/` 폴더)
+  - `/api/jira/test-connection` - Jira 연결 테스트
+  - `/api/jira/search` - Jira 이슈 검색
+  - `/api/notifications/vapid-key` - VAPID 공개 키 조회
+  - `/api/notifications/subscribe` - Push 구독 등록
+  - `/api/notifications/unsubscribe` - Push 구독 해제
+  - `/api/notifications/send` - 알림 전송
+  - `/api/notifications/subscriptions` - 구독 목록 조회
+
+### 주의사항
+
+⚠️ **구독 정보 저장**: 현재는 메모리 기반 저장소를 사용하고 있습니다. 프로덕션 환경에서는 데이터베이스(예: Vercel KV, MongoDB 등)를 사용하는 것을 권장합니다.
