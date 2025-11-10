@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { JiraIssue, JiraSearchResult } from '../types/jira';
+import { JiraSearchResult } from '../types/jira';
 
 export class JiraService {
   private baseUrl: string;

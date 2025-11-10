@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { JiraService } from './services/jiraService';
 import { JiraConfig, IssueFilter, StatusGroup } from './types/jira';
 import JiraConfigComponent from './components/JiraConfig';
@@ -20,57 +20,8 @@ function App() {
   const [notificationService] = useState(() => NotificationService.getInstance());
   const [pollingService] = useState(() => JiraPollingService.getInstance());
 
-  useEffect(() => {
-    // 초기 로드 시 설정 불러오기
-    const savedConfig = localStorage.getItem('jira-config');
-    if (savedConfig) {
-      try {
-        const parsedConfig = JSON.parse(savedConfig);
-        setJiraConfig(parsedConfig);
-        
-        // 저장된 설정으로 서비스 생성
-        const service = new JiraService(parsedConfig.baseUrl, parsedConfig.email, parsedConfig.apiToken);
-        setJiraService(service);
-        pollingService.setJiraService(service);
-        setIsConfigOpen(false);
-      } catch (error) {
-        console.error('설정 불러오기 실패:', error);
-        setIsConfigOpen(true);
-      }
-    } else {
-      setIsConfigOpen(true);
-    }
-
-    // 알림 서비스 초기화
-    notificationService.initialize().then(success => {
-      if (success) {
-        console.log('Notification service initialized');
-      }
-    });
-
-    // 폴링 서비스 변경사항 콜백 등록
-    pollingService.onChanges(handleIssueChanges);
-
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      pollingService.offChanges(handleIssueChanges);
-    };
-  }, []);
-
-  const handleConfigChange = (config: JiraConfig | null) => {
-    setJiraConfig(config);
-    if (config) {
-      setIsConfigOpen(false);
-    }
-  };
-
-  const handleServiceChange = (service: JiraService | null) => {
-    setJiraService(service);
-    pollingService.setJiraService(service);
-  };
-
   // 알림 변경사항 처리
-  const handleIssueChanges = (changes: IssueChange[]) => {
+  const handleIssueChanges = useCallback((changes: IssueChange[]) => {
     changes.forEach(change => {
       let title = 'Jira 알림';
       let body = '';
@@ -108,6 +59,55 @@ function App() {
         }
       });
     });
+  }, [notificationService, jiraConfig]);
+
+  useEffect(() => {
+    // 초기 로드 시 설정 불러오기
+    const savedConfig = localStorage.getItem('jira-config');
+    if (savedConfig) {
+      try {
+        const parsedConfig = JSON.parse(savedConfig);
+        setJiraConfig(parsedConfig);
+        
+        // 저장된 설정으로 서비스 생성
+        const service = new JiraService(parsedConfig.baseUrl, parsedConfig.email, parsedConfig.apiToken);
+        setJiraService(service);
+        pollingService.setJiraService(service);
+        setIsConfigOpen(false);
+      } catch (error) {
+        console.error('설정 불러오기 실패:', error);
+        setIsConfigOpen(true);
+      }
+    } else {
+      setIsConfigOpen(true);
+    }
+
+    // 알림 서비스 초기화
+    notificationService.initialize().then(success => {
+      if (success) {
+        console.log('Notification service initialized');
+      }
+    });
+
+    // 폴링 서비스 변경사항 콜백 등록
+    pollingService.onChanges(handleIssueChanges);
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      pollingService.offChanges(handleIssueChanges);
+    };
+  }, [handleIssueChanges, notificationService, pollingService]);
+
+  const handleConfigChange = (config: JiraConfig | null) => {
+    setJiraConfig(config);
+    if (config) {
+      setIsConfigOpen(false);
+    }
+  };
+
+  const handleServiceChange = (service: JiraService | null) => {
+    setJiraService(service);
+    pollingService.setJiraService(service);
   };
 
   const getFilterTitle = (filter: IssueFilter) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { JiraService } from '../services/jiraService';
 import { JiraIssue, JiraSearchResult, IssueFilter, StatusGroup } from '../types/jira';
 import { filterMentionedComments } from '../utils/commentUtils';
@@ -56,7 +56,7 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
       .sort((a, b) => b.count - a.count); // 개수 순으로 정렬
   };
 
-  const loadIssues = async () => {
+  const loadIssues = useCallback(async () => {
     if (!jiraService) return;
 
     setLoading(true);
@@ -166,12 +166,12 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
     } finally {
       setLoading(false);
     }
-  };
+  }, [jiraService, filter, currentUserEmail, onStatusGroupsUpdate]);
 
   useEffect(() => {
     loadIssues();
     setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
-  }, [jiraService, filter]);
+  }, [loadIssues]);
 
   // 페이징된 이슈 계산
   const getPaginatedIssues = () => {

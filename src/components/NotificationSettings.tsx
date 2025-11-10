@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NotificationService } from '../services/notificationService';
 import { JiraPollingService, PollingConfig } from '../services/jiraPollingService';
 import './NotificationSettings.css';
@@ -22,12 +22,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    initializeServices();
-    loadConfig();
-  }, []);
-
-  const initializeServices = async () => {
+  const initializeServices = useCallback(async () => {
     setIsLoading(true);
     try {
       const initialized = await notificationService.initialize();
@@ -43,9 +38,9 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [notificationService]);
 
-  const loadConfig = () => {
+  const loadConfig = useCallback(() => {
     const savedConfig = localStorage.getItem('jira-polling-config');
     if (savedConfig) {
       try {
@@ -56,7 +51,12 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onClose }) 
         console.error('Failed to load polling config:', error);
       }
     }
-  };
+  }, [pollingService]);
+
+  useEffect(() => {
+    initializeServices();
+    loadConfig();
+  }, [initializeServices, loadConfig]);
 
   const saveConfig = (config: PollingConfig) => {
     localStorage.setItem('jira-polling-config', JSON.stringify(config));
