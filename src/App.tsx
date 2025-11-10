@@ -149,7 +149,7 @@ function App() {
   };
 
   // 탭 순서 적용
-  const applyTabOrder = (groups: StatusGroup[]) => {
+  const applyTabOrder = useCallback((groups: StatusGroup[]) => {
     const savedOrder = loadTabOrder();
     if (savedOrder.length === 0) return groups;
 
@@ -168,7 +168,13 @@ function App() {
     // 남은 그룹들을 끝에 추가
     orderedGroups.push(...remainingGroups);
     return orderedGroups;
-  };
+  }, []);
+  
+  // 상태 그룹 업데이트 핸들러
+  const handleStatusGroupsUpdate = useCallback((groups: StatusGroup[]) => {
+    const orderedGroups = applyTabOrder(groups);
+    setStatusGroups(orderedGroups);
+  }, [applyTabOrder]);
 
   // 드래그 시작
   const handleDragStart = (e: React.DragEvent, tabId: string) => {
@@ -294,10 +300,7 @@ function App() {
             <IssueList
               jiraService={jiraService}
               filter={currentFilter}
-              onStatusGroupsUpdate={(groups) => {
-                const orderedGroups = applyTabOrder(groups);
-                setStatusGroups(orderedGroups);
-              }}
+              onStatusGroupsUpdate={handleStatusGroupsUpdate}
               currentUserEmail={jiraConfig?.email}
             />
           </>

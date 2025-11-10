@@ -169,9 +169,12 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
   }, [jiraService, filter, currentUserEmail, onStatusGroupsUpdate]);
 
   useEffect(() => {
-    loadIssues();
-    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
-  }, [loadIssues]);
+    if (jiraService) {
+      loadIssues();
+      setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jiraService, filter]); // loadIssues는 onStatusGroupsUpdate에 의존하므로 여기서는 제외
 
   // 페이징된 이슈 계산
   const getPaginatedIssues = () => {

@@ -59,11 +59,22 @@ app.post('/api/jira/test-connection', async (req, res) => {
       user: response.data
     });
   } catch (error) {
-    console.error('Jira 연결 테스트 실패:', error.response?.data || error.message);
+    // 상세한 에러 로깅
+    console.error('Jira 연결 테스트 실패:');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error stack:', error.stack);
+    console.error('Error response status:', error.response?.status);
+    console.error('Error response data:', error.response?.data);
+    
     res.status(500).json({ 
       success: false, 
       message: 'Jira 연결에 실패했습니다. 설정을 확인해주세요.',
-      error: error.response?.data?.errorMessages || [error.message]
+      error: error.response?.data?.errorMessages || [error.message],
+      details: process.env.NODE_ENV === 'development' ? {
+        code: error.code,
+        status: error.response?.status
+      } : undefined
     });
   }
 });
@@ -202,6 +213,17 @@ app.get('/api/notifications/subscriptions', (req, res) => {
     success: true, 
     count: subscriptions.length,
     subscriptions: subscriptions.map(sub => ({ endpoint: sub.endpoint }))
+  });
+});
+
+// 전역 에러 핸들러
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  console.error('Error stack:', err.stack);
+  res.status(500).json({
+    success: false,
+    message: '서버 오류가 발생했습니다.',
+    error: err.message
   });
 });
 
