@@ -137,42 +137,15 @@ function App() {
     // 폴링 서비스 변경사항 콜백 등록
     pollingService.onChanges(handleIssueChanges);
     
-    // 초기 로드 시 Jira 서비스가 이미 설정되어 있고 폴링이 시작되지 않았으면 폴링 시작
-    if (jiraService && !pollingService.isPolling()) {
-      const savedPollingConfig = localStorage.getItem('jira-polling-config');
-      if (savedPollingConfig) {
-        try {
-          const pollingConfig = JSON.parse(savedPollingConfig);
-          pollingService.updateConfig(pollingConfig);
-          
-          if (pollingConfig.enabled) {
-            console.log('Auto-starting polling with saved config:', pollingConfig);
-            pollingService.startPolling();
-          }
-        } catch (error) {
-          console.error('Failed to load polling config:', error);
-        }
-      } else {
-        // 기본 설정으로 폴링 활성화
-        const defaultConfig = {
-          interval: 30000,
-          enabled: true,
-          checkNewIssues: true,
-          checkMentions: true,
-          checkStatusChanges: true
-        };
-        pollingService.updateConfig(defaultConfig);
-        console.log('Auto-starting polling with default config');
-        pollingService.startPolling();
-      }
-    }
+    // 주의: 폴링 시작은 위의 초기 로드 부분(93-121줄)에서만 처리
+    // jiraService가 의존성 배열에 있어서 여기서 다시 시작하면 중복 발생 가능
 
     // 컴포넌트 언마운트 시 정리
     return () => {
       pollingService.offChanges(handleIssueChanges);
       pollingService.stopPolling();
     };
-  }, [handleIssueChanges, notificationService, pollingService, jiraService]);
+  }, [handleIssueChanges, notificationService, pollingService]); // jiraService 제거 - 폴링 시작은 초기 로드에서만 처리
 
   const handleConfigChange = (config: JiraConfig | null) => {
     setJiraConfig(config);
