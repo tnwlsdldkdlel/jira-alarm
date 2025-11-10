@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { JiraService } from '../services/jiraService';
 import { JiraIssue, JiraSearchResult, IssueFilter, StatusGroup } from '../types/jira';
 import { filterMentionedComments } from '../utils/commentUtils';
@@ -19,6 +19,14 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // onStatusGroupsUpdate를 ref로 관리하여 의존성 문제 해결
+  const onStatusGroupsUpdateRef = useRef(onStatusGroupsUpdate);
+  
+  // onStatusGroupsUpdate가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    onStatusGroupsUpdateRef.current = onStatusGroupsUpdate;
+  }, [onStatusGroupsUpdate]);
 
   const groupIssuesByStatus = (issues: JiraIssue[]): StatusGroup[] => {
     const statusMap = new Map<string, number>();
@@ -87,13 +95,20 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
       }
       
       // status 그룹 업데이트 (전체 이슈 기준)
-      if (filter === 'all' || filter === 'mentioned') {
+      // 필터가 'all'일 때는 이미 가져온 result를 재사용하여 중복 API 호출 방지
+      if (filter === 'all') {
+        // 이미 getAllIssues()로 가져온 데이터를 재사용
+        const statusGroups = groupIssuesByStatus(result.issues);
+        onStatusGroupsUpdateRef.current(statusGroups);
+      } else if (filter === 'mentioned') {
+        // 멘션된 이슈는 전체 이슈를 별도로 가져와서 그룹 생성
         const allIssuesResult = await jiraService.getAllIssues();
         const statusGroups = groupIssuesByStatus(allIssuesResult.issues);
-        onStatusGroupsUpdate(statusGroups);
+        onStatusGroupsUpdateRef.current(statusGroups);
       } else {
+        // 특정 필터일 때는 현재 이슈로만 그룹 생성
         const statusGroups = groupIssuesByStatus(issuesToProcess);
-        onStatusGroupsUpdate(statusGroups);
+        onStatusGroupsUpdateRef.current(statusGroups);
       }
       
       // 필터링 적용
@@ -166,7 +181,7 @@ const IssueList: React.FC<IssueListProps> = ({ jiraService, filter, onStatusGrou
     } finally {
       setLoading(false);
     }
-  }, [jiraService, filter, currentUserEmail, onStatusGroupsUpdate]);
+  }, [jiraService, filter, currentUserEmail]); // onStatusGroupsUpdate는 ref로 관리하므로 의존성에서 제거
 
   useEffect(() => {
     if (jiraService) {

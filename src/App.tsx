@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { JiraService } from './services/jiraService';
 import { JiraConfig, IssueFilter, StatusGroup } from './types/jira';
 import JiraConfigComponent from './components/JiraConfig';
@@ -19,6 +19,20 @@ function App() {
   const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] = useState(false);
   const [notificationService] = useState(() => NotificationService.getInstance());
   const [pollingService] = useState(() => JiraPollingService.getInstance());
+  
+  // jiraConfig를 ref로 관리하여 의존성 문제 해결
+  const jiraConfigRef = useRef<JiraConfig | null>(null);
+  const statusGroupsRef = useRef<StatusGroup[]>([]);
+  
+  // jiraConfig가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    jiraConfigRef.current = jiraConfig;
+  }, [jiraConfig]);
+  
+  // statusGroups가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    statusGroupsRef.current = statusGroups;
+  }, [statusGroups]);
 
   // 알림 변경사항 처리
   const handleIssueChanges = useCallback((changes: IssueChange[]) => {
@@ -45,7 +59,8 @@ function App() {
           break;
       }
 
-      // 로컬 알림 표시
+      // 로컬 알림 표시 (ref를 통해 최신 jiraConfig 참조)
+      const currentConfig = jiraConfigRef.current;
       notificationService.showLocalNotification(title, {
         body,
         icon: '/logo192.png',
@@ -54,12 +69,12 @@ function App() {
         requireInteraction: true,
         data: {
           issueKey: change.issue.key,
-          issueUrl: `${jiraConfig?.baseUrl}/browse/${change.issue.key}`,
+          issueUrl: currentConfig?.baseUrl ? `${currentConfig.baseUrl}/browse/${change.issue.key}` : '',
           type: change.type
         }
       });
     });
-  }, [notificationService, jiraConfig]);
+  }, [notificationService]);
 
   useEffect(() => {
     // 초기 로드 시 설정 불러오기
@@ -170,10 +185,19 @@ function App() {
     return orderedGroups;
   }, []);
   
-  // 상태 그룹 업데이트 핸들러
+  // 상태 그룹 업데이트 핸들러 (상태가 실제로 변경되었을 때만 업데이트)
   const handleStatusGroupsUpdate = useCallback((groups: StatusGroup[]) => {
     const orderedGroups = applyTabOrder(groups);
-    setStatusGroups(orderedGroups);
+    
+    // ref를 통해 현재 상태 그룹 확인 (의존성 문제 방지)
+    const currentGroups = statusGroupsRef.current;
+    const currentGroupsStr = JSON.stringify(currentGroups.map(g => ({ status: g.status, count: g.count })));
+    const newGroupsStr = JSON.stringify(orderedGroups.map(g => ({ status: g.status, count: g.count })));
+    
+    // 상태가 변경되었을 때만 업데이트
+    if (currentGroupsStr !== newGroupsStr) {
+      setStatusGroups(orderedGroups);
+    }
   }, [applyTabOrder]);
 
   // 드래그 시작
