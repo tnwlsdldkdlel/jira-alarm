@@ -49,12 +49,17 @@ export class JiraPollingService {
 
   // 폴링 설정 업데이트
   public updateConfig(config: Partial<PollingConfig>): void {
+    const oldConfig = { ...this.config };
     this.config = { ...this.config, ...config };
     
-    // 폴링이 활성화되어 있고 기존 폴링이 실행 중이면 재시작
-    if (this.config.enabled && this.pollingInterval) {
-      this.stopPolling();
-      this.startPolling();
+    // 설정이 실제로 변경되었고, 폴링이 활성화되어 있고 기존 폴링이 실행 중이면 재시작
+    const configChanged = JSON.stringify(oldConfig) !== JSON.stringify(this.config);
+    if (configChanged && this.config.enabled && this.pollingInterval) {
+      // interval이 변경된 경우에만 재시작
+      if (oldConfig.interval !== this.config.interval) {
+        this.stopPolling();
+        this.startPolling();
+      }
     }
   }
 

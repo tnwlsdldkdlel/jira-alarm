@@ -89,6 +89,36 @@ function App() {
         setJiraService(service);
         pollingService.setJiraService(service);
         setIsConfigOpen(false);
+        
+        // 폴링 설정 불러오기 및 시작 (이미 실행 중이 아니면)
+        if (!pollingService.isPolling()) {
+          const savedPollingConfig = localStorage.getItem('jira-polling-config');
+          if (savedPollingConfig) {
+            try {
+              const pollingConfig = JSON.parse(savedPollingConfig);
+              pollingService.updateConfig(pollingConfig);
+              
+              if (pollingConfig.enabled) {
+                console.log('Starting polling after initial load:', pollingConfig);
+                pollingService.startPolling();
+              }
+            } catch (error) {
+              console.error('Failed to load polling config:', error);
+            }
+          } else {
+            // 기본 설정으로 폴링 활성화
+            const defaultConfig = {
+              interval: 30000,
+              enabled: true,
+              checkNewIssues: true,
+              checkMentions: true,
+              checkStatusChanges: true
+            };
+            pollingService.updateConfig(defaultConfig);
+            console.log('Starting polling with default config after initial load');
+            pollingService.startPolling();
+          }
+        }
       } catch (error) {
         console.error('설정 불러오기 실패:', error);
         setIsConfigOpen(true);
@@ -106,12 +136,43 @@ function App() {
 
     // 폴링 서비스 변경사항 콜백 등록
     pollingService.onChanges(handleIssueChanges);
+    
+    // 초기 로드 시 Jira 서비스가 이미 설정되어 있고 폴링이 시작되지 않았으면 폴링 시작
+    if (jiraService && !pollingService.isPolling()) {
+      const savedPollingConfig = localStorage.getItem('jira-polling-config');
+      if (savedPollingConfig) {
+        try {
+          const pollingConfig = JSON.parse(savedPollingConfig);
+          pollingService.updateConfig(pollingConfig);
+          
+          if (pollingConfig.enabled) {
+            console.log('Auto-starting polling with saved config:', pollingConfig);
+            pollingService.startPolling();
+          }
+        } catch (error) {
+          console.error('Failed to load polling config:', error);
+        }
+      } else {
+        // 기본 설정으로 폴링 활성화
+        const defaultConfig = {
+          interval: 30000,
+          enabled: true,
+          checkNewIssues: true,
+          checkMentions: true,
+          checkStatusChanges: true
+        };
+        pollingService.updateConfig(defaultConfig);
+        console.log('Auto-starting polling with default config');
+        pollingService.startPolling();
+      }
+    }
 
     // 컴포넌트 언마운트 시 정리
     return () => {
       pollingService.offChanges(handleIssueChanges);
+      pollingService.stopPolling();
     };
-  }, [handleIssueChanges, notificationService, pollingService]);
+  }, [handleIssueChanges, notificationService, pollingService, jiraService]);
 
   const handleConfigChange = (config: JiraConfig | null) => {
     setJiraConfig(config);
@@ -123,6 +184,39 @@ function App() {
   const handleServiceChange = (service: JiraService | null) => {
     setJiraService(service);
     pollingService.setJiraService(service);
+    
+    // Jira 서비스가 설정되면 폴링 시작 (이미 실행 중이 아니면)
+    if (service && !pollingService.isPolling()) {
+      const savedPollingConfig = localStorage.getItem('jira-polling-config');
+      if (savedPollingConfig) {
+        try {
+          const pollingConfig = JSON.parse(savedPollingConfig);
+          pollingService.updateConfig(pollingConfig);
+          
+          if (pollingConfig.enabled) {
+            console.log('Starting polling after Jira service setup:', pollingConfig);
+            pollingService.startPolling();
+          }
+        } catch (error) {
+          console.error('Failed to load polling config:', error);
+        }
+      } else {
+        // 기본 설정으로 폴링 활성화
+        const defaultConfig = {
+          interval: 30000,
+          enabled: true,
+          checkNewIssues: true,
+          checkMentions: true,
+          checkStatusChanges: true
+        };
+        pollingService.updateConfig(defaultConfig);
+        console.log('Starting polling with default config');
+        pollingService.startPolling();
+      }
+    } else if (!service) {
+      // Jira 서비스가 없으면 폴링 중지
+      pollingService.stopPolling();
+    }
   };
 
   const getFilterTitle = (filter: IssueFilter) => {
