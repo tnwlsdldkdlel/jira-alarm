@@ -29,6 +29,8 @@ export class JiraPollingService {
     checkStatusChanges: true
   };
   private lastCheckedIssues: Map<string, JiraIssue> = new Map();
+  private lastCheckedMentions: Map<string, Set<string>> = new Map(); // 이슈키 -> 댓글 ID Set
+  private isInitialMentionCheck: boolean = true; // 첫 멘션 체크 여부
   private changeCallbacks: ((changes: IssueChange[]) => void)[] = [];
 
   private constructor() {}
@@ -86,6 +88,14 @@ export class JiraPollingService {
       this.pollingInterval = null;
       console.log('Jira polling stopped');
     }
+    // 폴링 중지 시 초기 체크 플래그는 유지 (재시작 시 기존 댓글 제외)
+  }
+  
+  // 멘션 체크 초기화 (필요시 사용)
+  public resetMentionCheck(): void {
+    this.lastCheckedMentions.clear();
+    this.isInitialMentionCheck = true;
+    console.log('Mention check reset');
   }
 
   // 변경사항 감지
@@ -111,6 +121,12 @@ export class JiraPollingService {
         changes.push(...statusChanges);
       }
 
+      // 멘션 확인
+      if (this.config.checkMentions) {
+        const mentions = await this.findMentions();
+        changes.push(...mentions);
+      }
+
       // 변경사항이 있으면 콜백 호출
       if (changes.length > 0) {
         console.log(`Found ${changes.length} changes:`, changes);
@@ -122,6 +138,53 @@ export class JiraPollingService {
 
     } catch (error) {
       console.error('Error checking for changes:', error);
+    }
+  }
+
+  // 멘션 찾기
+  private async findMentions(): Promise<IssueChange[]> {
+    if (!this.jiraService) return [];
+
+    try {
+      const mentionedIssues = await this.jiraService.getMentionedIssues();
+      const changes: IssueChange[] = [];
+
+      mentionedIssues.issues.forEach(issue => {
+        if (!issue.comments || !issue.comments.comments) return;
+
+        const issueKey = issue.key;
+        const lastCheckedCommentIds = this.lastCheckedMentions.get(issueKey) || new Set<string>();
+        const currentCommentIds = new Set<string>();
+
+        // 현재 댓글들 확인
+        issue.comments.comments.forEach(comment => {
+          currentCommentIds.add(comment.id);
+
+          // 새로운 멘션인지 확인 (이전에 체크하지 않은 댓글)
+          // 첫 체크 시에는 알림을 보내지 않음 (기존 댓글 제외)
+          if (!lastCheckedCommentIds.has(comment.id) && !this.isInitialMentionCheck) {
+            changes.push({
+              type: 'mentioned',
+              issue,
+              timestamp: new Date(comment.created)
+            });
+          }
+        });
+
+        // 현재 댓글 ID 목록 저장
+        this.lastCheckedMentions.set(issueKey, currentCommentIds);
+      });
+
+      // 첫 체크 완료 표시
+      if (this.isInitialMentionCheck) {
+        this.isInitialMentionCheck = false;
+        console.log('Initial mention check completed, future mentions will trigger notifications');
+      }
+
+      return changes;
+    } catch (error) {
+      console.error('Error finding mentions:', error);
+      return [];
     }
   }
 
